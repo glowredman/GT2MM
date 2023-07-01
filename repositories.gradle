@@ -1,0 +1,6 @@
+repositories {
+    maven {
+        name = "GregTech"
+        url = "https://gregtech.overminddl1.com/"
+    }
+}
