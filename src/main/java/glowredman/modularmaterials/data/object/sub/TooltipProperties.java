@@ -22,28 +22,4 @@ public class TooltipProperties {
             Arrays.toString(text));
     }
 
-    public int getBackground() {
-        try {
-            return Integer.parseUnsignedInt(background, 16);
-        } catch (Exception e) {
-            return 0xF0100010;
-        }
-    }
-
-    public int getBorderStart() {
-        try {
-            return Integer.parseUnsignedInt(borderStart, 16);
-        } catch (Exception e) {
-            return 0x505000FF;
-        }
-    }
-
-    public int getBorderEnd() {
-        try {
-            return Integer.parseUnsignedInt(borderEnd, 16);
-        } catch (Exception e) {
-            return 0x5028007F;
-        }
-    }
-
 }

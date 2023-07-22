@@ -24,22 +24,6 @@ public class FluidProperties {
             tags);
     }
 
-    public int getTemperature(ChemicalState currentState, ChemicalState reqState) {
-        if (currentState == reqState) {
-            return currentTemperature;
-        } else if (reqState == ChemicalState.GASEOUS) {
-            return boilingTemperature;
-        } else if (reqState == ChemicalState.LIQUID) {
-            return meltingTemperature;
-        }
-        // should only be returned if either currentState xor reqState is SOLID
-        return currentTemperature;
-    }
-
-    public StateBasedProperties propertiesOfState(ChemicalState state) {
-        return state == ChemicalState.GASEOUS ? gas : liquid;
-    }
-
     public static class StateBasedProperties {
 
         public int density = 1000;

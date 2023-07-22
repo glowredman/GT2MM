@@ -6,29 +6,14 @@ public class ColorProperties {
     public int green = 255;
     public int blue = 255;
     public int alpha = 255;
-
-    public ColorProperties() {}
-
-    public ColorProperties(int red, int green, int blue, int alpha) {
-        this.red = red;
-        this.green = green;
-        this.blue = blue;
-        this.alpha = alpha;
-    }
-
-    public ColorProperties(int red, int green, int blue) {
-        this.red = red;
-        this.green = green;
-        this.blue = blue;
-    }
-
-    public int getARGB() {
-        return alpha << 24 | red << 16 | green << 8 | blue;
-    }
-
-    public int getRGB() {
-        return red << 16 | green << 8 | blue;
-    }
+    public PulseMode pulseModeRed = PulseMode.NONE;
+    public PulseMode pulseModeGreen = PulseMode.NONE;
+    public PulseMode pulseModeBlue = PulseMode.NONE;
+    public PulseMode pulseModeAlpha = PulseMode.NONE;
+    public PulseMode pulseModeMoltenRed = PulseMode.NONE;
+    public PulseMode pulseModeMoltenGreen = PulseMode.NONE;
+    public PulseMode pulseModeMoltenBlue = PulseMode.NONE;
+    public PulseMode pulseModeMoltenAlpha = PulseMode.NONE;
 
     @Override
     public String toString() {

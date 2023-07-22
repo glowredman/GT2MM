@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.util.StatCollector;
@@ -28,16 +30,19 @@ import com.google.gson.GsonBuilder;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
+import cpw.mods.fml.relauncher.ReflectionHelper;
 import glowredman.modularmaterials.data.object.MM_Material;
 import glowredman.modularmaterials.data.object.MM_OreVein;
 import glowredman.modularmaterials.data.object.sub.BlockProperties;
 import glowredman.modularmaterials.data.object.sub.ChemicalState;
 import glowredman.modularmaterials.data.object.sub.FluidProperties;
 import glowredman.modularmaterials.data.object.sub.OreProperties;
+import glowredman.modularmaterials.data.object.sub.PulseMode;
 import gregtech.GT_Mod;
 import gregtech.api.GregTech_API;
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
+import gregtech.common.GT_Client;
 import gregtech.common.GT_Proxy;
 import gregtech.common.GT_Worldgen_GT_Ore_Layer;
 import gregtech.common.blocks.GT_Block_Metal;
@@ -53,6 +58,8 @@ public class GT2MM {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting()
         .create();
+    private static List<Materials> posR, posG, posB, posA, negR, negG, negB, negA, posMR, posMG, posMB, posMA, negMR,
+        negMG, negMB, negMA;
     private static final Logger LOGGER = LogManager.getLogger("GT2MM");
     private static final Map<OrePrefixes, String> KNOWN_TYPES = new LinkedHashMap<>();
     private static final String[] TOOLS = { "minecraft:needs_stone_tool", "minecraft:needs_iron_tool",
@@ -60,8 +67,49 @@ public class GT2MM {
 
     @EventHandler
     public static void postInit(final FMLServerAboutToStartEvent event) {
+        initPulseLists();
         handleMaterials();
         handleOreVeins();
+    }
+
+    private static void initPulseLists() {
+        try {
+            GT_Client gtClient = new GT_Client();
+            posR = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mPosR");
+            posG = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mPosG");
+            posB = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mPosB");
+            posA = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mPosA");
+            negR = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mNegR");
+            negG = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mNegG");
+            negB = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mNegB");
+            negA = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mNegA");
+            posMR = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mMoltenPosR");
+            posMG = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mMoltenPosG");
+            posMB = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mMoltenPosB");
+            posMA = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mMoltenPosA");
+            negMR = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mMoltenNegR");
+            negMG = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mMoltenNegG");
+            negMB = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mMoltenNegB");
+            negMA = ReflectionHelper.getPrivateValue(GT_Client.class, gtClient, "mMoltenNegA");
+        } catch (Exception e) {
+            LOGGER.error("Failed to get color animation lists", e);
+            posR = Collections.emptyList();
+            posG = Collections.emptyList();
+            posB = Collections.emptyList();
+            posA = Collections.emptyList();
+            negR = Collections.emptyList();
+            negG = Collections.emptyList();
+            negB = Collections.emptyList();
+            negA = Collections.emptyList();
+            posMR = Collections.emptyList();
+            posMG = Collections.emptyList();
+            posMB = Collections.emptyList();
+            posMA = Collections.emptyList();
+            negMR = Collections.emptyList();
+            negMG = Collections.emptyList();
+            negMB = Collections.emptyList();
+            negMA = Collections.emptyList();
+        }
     }
 
     private static void handleMaterials() {
@@ -113,6 +161,7 @@ public class GT2MM {
         new_mat.color.green = mat.mRGBa[1];
         new_mat.color.blue = mat.mRGBa[2];
         new_mat.color.alpha = mat.mRGBa[3];
+        setPulseMode(new_mat, mat);
         new_mat.enabled = mat.mMetaItemSubID > 0;
         new_mat.enabledTypes = getTypes(mat);
         new_mat.fluid = getFluidProps(mat);
@@ -152,7 +201,7 @@ public class GT2MM {
         return Pair.of(oreLayer.mWorldGenName, new_orevein);
     }
 
-    private static void save(final Map<String, ?> content, final String filename) {
+    private static void save(@Nullable final Map<String, ?> content, @Nonnull final String filename) {
         final Path dir = Launch.minecraftHome.toPath()
             .resolve("gt2mm");
         final Path file = dir.resolve(filename);
@@ -168,7 +217,33 @@ public class GT2MM {
         }
     }
 
-    private static void addBlockInfo(final Map<String, MM_Material> materials) {
+    private static void setPulseMode(@Nonnull final MM_Material new_mat, @Nullable final Materials mat) {
+        if (posR.contains(mat)) new_mat.color.pulseModeRed = PulseMode.POS;
+        else if (negR.contains(mat)) new_mat.color.pulseModeRed = PulseMode.NEG;
+
+        if (posG.contains(mat)) new_mat.color.pulseModeGreen = PulseMode.POS;
+        else if (negG.contains(mat)) new_mat.color.pulseModeGreen = PulseMode.NEG;
+
+        if (posB.contains(mat)) new_mat.color.pulseModeBlue = PulseMode.POS;
+        else if (negB.contains(mat)) new_mat.color.pulseModeBlue = PulseMode.NEG;
+
+        if (posA.contains(mat)) new_mat.color.pulseModeAlpha = PulseMode.POS;
+        else if (negA.contains(mat)) new_mat.color.pulseModeAlpha = PulseMode.NEG;
+
+        if (posMR.contains(mat)) new_mat.color.pulseModeMoltenRed = PulseMode.POS;
+        else if (negMR.contains(mat)) new_mat.color.pulseModeMoltenRed = PulseMode.NEG;
+
+        if (posMG.contains(mat)) new_mat.color.pulseModeMoltenGreen = PulseMode.POS;
+        else if (negMG.contains(mat)) new_mat.color.pulseModeMoltenGreen = PulseMode.NEG;
+
+        if (posMB.contains(mat)) new_mat.color.pulseModeMoltenBlue = PulseMode.POS;
+        else if (negMB.contains(mat)) new_mat.color.pulseModeMoltenBlue = PulseMode.NEG;
+
+        if (posMA.contains(mat)) new_mat.color.pulseModeMoltenAlpha = PulseMode.POS;
+        else if (negMA.contains(mat)) new_mat.color.pulseModeMoltenAlpha = PulseMode.NEG;
+    }
+
+    private static void addBlockInfo(@Nonnull final Map<String, MM_Material> materials) {
         if (GregTech_API.VERSION < 509) return;
 
         try {
@@ -201,7 +276,7 @@ public class GT2MM {
         }
     }
 
-    private static List<String> getTypes(final Materials mat) {
+    private static List<String> getTypes(@Nonnull final Materials mat) {
         List<String> types = KNOWN_TYPES.entrySet()
             .stream()
             .filter(
@@ -221,7 +296,7 @@ public class GT2MM {
         return types;
     }
 
-    private static FluidProperties getFluidProps(final Materials mat) {
+    private static FluidProperties getFluidProps(@Nonnull final Materials mat) {
         final FluidProperties props = new FluidProperties();
 
         final ChemicalState state = getState(mat);
@@ -247,7 +322,7 @@ public class GT2MM {
         return props;
     }
 
-    private static OreProperties getOreProps(final Materials mat) {
+    private static OreProperties getOreProps(@Nonnull final Materials mat) {
         final OreProperties props = new OreProperties();
         int harvestLevel = 0;
 
@@ -277,7 +352,7 @@ public class GT2MM {
         return props;
     }
 
-    private static ChemicalState getState(final Materials mat) {
+    private static ChemicalState getState(@Nonnull final Materials mat) {
         if (mat.mStandardMoltenFluid != null) {
             return ChemicalState.SOLID;
         }
@@ -287,7 +362,7 @@ public class GT2MM {
         return ChemicalState.GASEOUS;
     }
 
-    private static String[] getTooltip(final Materials mat) {
+    private static String[] getTooltip(@Nonnull final Materials mat) {
         final String s = mat.getToolTip(false);
         if (s.isEmpty()) {
             return new String[0];
@@ -304,7 +379,7 @@ public class GT2MM {
             .replace('9', '\u2089') };
     }
 
-    private static List<String> getDimensions(final GT_Worldgen_GT_Ore_Layer oreLayer) {
+    private static List<String> getDimensions(@Nonnull final GT_Worldgen_GT_Ore_Layer oreLayer) {
         final List<String> dims = new ArrayList<>();
 
         if (oreLayer.mOverworld) {
@@ -321,6 +396,7 @@ public class GT2MM {
     }
 
     static {
+        KNOWN_TYPES.put(OrePrefixes.ore, "ore");
         KNOWN_TYPES.put(OrePrefixes.dustTiny, "dust_tiny");
         KNOWN_TYPES.put(OrePrefixes.dustSmall, "dust_small");
         KNOWN_TYPES.put(OrePrefixes.dust, "dust");
